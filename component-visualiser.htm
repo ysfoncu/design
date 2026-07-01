@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InPraxis — Component Visualiser</title>
+<style>
+  :root{
+    --ds-blue:#0062ba; --ds-blue-hover:#004e93; --ds-border:#c9ccd0;
+    --at-blue:#0c66e4; --at-blue-hover:#0055cc; --at-bg:#f7f8f9; --at-border:#dcdfe4;
+    --text:#1e2b3c; --muted:#5c6773; --danger:#c30000; --success:#2e7d32; --warn:#a15c00;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--text);background:#eef1f4;line-height:1.4}
+  header.page{background:#12233b;color:#fff;padding:28px 32px}
+  header.page h1{margin:0 0 4px;font-size:24px}
+  header.page p{margin:0;color:#aebdd0;font-size:14px}
+  .toolbar{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid var(--at-border);
+           padding:10px 32px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toolbar input{padding:8px 12px;border:1px solid var(--at-border);border-radius:8px;font-size:14px;min-width:220px}
+  .toolbar .cat{font-size:12px;color:var(--muted);padding:4px 10px;border:1px solid var(--at-border);
+                border-radius:999px;cursor:pointer;background:#fff}
+  .toolbar .cat.active{background:var(--at-blue);color:#fff;border-color:var(--at-blue)}
+  main{padding:24px 32px;max-width:1200px;margin:0 auto}
+  h2.cat-title{margin:32px 0 12px;font-size:16px;text-transform:uppercase;letter-spacing:.05em;
+               color:var(--muted);border-bottom:2px solid var(--at-border);padding-bottom:6px}
+  .card{background:#fff;border:1px solid var(--at-border);border-radius:12px;margin:14px 0;overflow:hidden;
+        box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .card .head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;
+              border-bottom:1px solid var(--at-border);background:#fafbfc;gap:12px;flex-wrap:wrap}
+  .card .head h3{margin:0;font-size:16px}
+  .card .head h3 .variant{color:var(--muted);font-weight:400}
+  .ref-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .ref-both{background:#e7f0ff;color:#0747a6}
+  .ref-ds{background:#e6f4ea;color:#1b5e20}
+  .ref-at{background:#fff1e6;color:#8a4b00}
+  .body{display:grid;grid-template-columns:0.9fr 1fr 1.1fr;gap:0}
+  @media(max-width:980px){.body{grid-template-columns:1fr}}
+  .info{padding:16px 18px;border-right:1px solid var(--at-border);font-size:13px}
+  @media(max-width:980px){.info{border-right:none;border-bottom:1px solid var(--at-border)}}
+  .live{padding:16px 18px;border-left:1px solid var(--at-border);font-size:12px;background:#fbfcfd}
+  @media(max-width:980px){.live{border-left:none;border-top:1px solid var(--at-border)}}
+  .live .cap{color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .live .cap b{color:var(--text)}
+  .live img{width:100%;border:1px solid var(--at-border);border-radius:8px;display:block;cursor:zoom-in;
+            box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .live .none{color:var(--muted);font-style:italic;padding:20px 0;text-align:center;
+              border:1px dashed var(--at-border);border-radius:8px}
+  .live .loc{margin-top:6px;color:var(--muted)}
+  .live-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px}
+  .live-yes{background:#e6f4ea;color:#1b5e20}
+  .live-no{background:#f1f2f4;color:#8993a4}
+  .info .row{display:flex;gap:8px;padding:4px 0}
+  .info .k{color:var(--muted);min-width:110px;flex-shrink:0}
+  .info .v{color:var(--text)}
+  .info a{color:var(--at-blue);text-decoration:none}
+  .info a:hover{text-decoration:underline}
+  .demo{padding:22px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;
+        background:repeating-linear-gradient(45deg,#fbfcfd,#fbfcfd 10px,#f6f8fa 10px,#f6f8fa 20px)}
+  .demo-label{position:absolute}
+
+  /* ---------- Designsystemet-flavoured primitives ---------- */
+  .ds-btn{font:inherit;font-size:14px;font-weight:500;border-radius:8px;padding:9px 16px;cursor:pointer;border:1px solid transparent}
+  .ds-btn.primary{background:var(--ds-blue);color:#fff}
+  .ds-btn.primary:hover{background:var(--ds-blue-hover)}
+  .ds-btn.secondary{background:#fff;color:var(--ds-blue);border-color:var(--ds-blue)}
+  .ds-btn.tertiary{background:transparent;color:var(--ds-blue)}
+  .ds-input{font:inherit;font-size:14px;padding:9px 12px;border:1px solid #6a6f73;border-radius:6px;min-width:200px}
+  .ds-input:focus{outline:3px solid #b3d0f0;border-color:var(--ds-blue)}
+
+  /* ---------- Atlassian-flavoured primitives ---------- */
+  .at-btn{font:inherit;font-size:14px;font-weight:500;border-radius:6px;padding:8px 14px;cursor:pointer;border:none}
+  .at-btn.primary{background:var(--at-blue);color:#fff}
+  .at-btn.primary:hover{background:var(--at-blue-hover)}
+  .at-btn.subtle{background:transparent;color:#42526e}
+  .at-btn.subtle:hover{background:#091e420f}
+  .at-btn.default{background:#f1f2f4;color:#172b4d}
+  .at-input{font:inherit;font-size:14px;padding:6px 10px;border:2px solid var(--at-border);border-radius:4px;background:var(--at-bg);min-width:200px}
+  .at-input:focus{outline:none;border-color:var(--at-blue);background:#fff}
+
+  /* shared bits */
+  .icon-btn{width:34px;height:34px;border-radius:6px;border:1px solid var(--at-border);background:#fff;cursor:pointer;
+            display:inline-flex;align-items:center;justify-content:center;font-size:16px}
+  .icon-btn:hover{background:#f1f2f4}
+  .link{color:var(--at-blue);text-decoration:none;cursor:pointer}
+  .link:hover{text-decoration:underline}
+  .tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:4px;background:#e2e5e9;color:#44546f}
+  .badge-count{background:var(--danger);color:#fff;border-radius:999px;font-size:11px;padding:1px 7px;font-weight:600}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--at-blue);color:#fff;display:inline-flex;
+          align-items:center;justify-content:center;font-size:14px;font-weight:600}
+  .card-el{border:1px solid var(--at-border);border-radius:8px;padding:14px;max-width:230px;background:#fff}
+  .alert{padding:12px 14px;border-radius:8px;font-size:13px;display:flex;gap:8px;align-items:flex-start}
+  .alert.info{background:#e7f0ff;color:#0747a6;border-left:4px solid var(--at-blue)}
+  .alert.success{background:#e6f4ea;color:#1b5e20;border-left:4px solid var(--success)}
+  .alert.warn{background:#fff4e5;color:#8a4b00;border-left:4px solid var(--warn)}
+  .alert.danger{background:#ffeceb;color:#ae2a19;border-left:4px solid var(--danger)}
+  .switch{width:40px;height:22px;background:#8993a4;border-radius:999px;position:relative;display:inline-block;cursor:pointer}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:.2s}
+  .switch.on{background:var(--at-blue)}
+  .switch.on::after{left:20px}
+  table.tbl{border-collapse:collapse;font-size:13px;width:100%}
+  table.tbl th,table.tbl td{border-bottom:1px solid var(--at-border);padding:7px 10px;text-align:left}
+  table.tbl th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase}
+  .tabs{display:flex;gap:2px;border-bottom:2px solid var(--at-border)}
+  .tabs .t{padding:8px 14px;font-size:14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px}
+  .tabs .t.active{color:var(--at-blue);border-bottom-color:var(--at-blue);font-weight:600}
+  .tooltip-el{background:#172b4d;color:#fff;font-size:12px;padding:5px 9px;border-radius:4px;display:inline-block}
+  .spinner{width:26px;height:26px;border:3px solid #dfe1e6;border-top-color:var(--at-blue);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .progress{width:200px;height:8px;background:#dfe1e6;border-radius:999px;overflow:hidden}
+  .progress>i{display:block;height:100%;width:62%;background:var(--at-blue)}
+  .breadcrumbs{font-size:13px;color:var(--muted)}
+  .breadcrumbs a{color:var(--at-blue);text-decoration:none}
+  .divider{height:1px;background:var(--at-border);width:220px}
+  .checkbox,.radio{display:inline-flex;align-items:center;gap:8px;font-size:14px}
+  .field{display:flex;flex-direction:column;gap:4px;font-size:13px}
+  .field label{font-weight:500}
+  .field .hint{color:var(--muted);font-size:12px}
+  .validation{color:var(--danger);font-size:12px;display:flex;gap:4px;align-items:center}
+  .drawer{width:220px;border:1px solid var(--at-border);border-radius:8px;background:#fff;box-shadow:-4px 0 12px rgba(0,0,0,.06);overflow:hidden}
+  .drawer .dh{padding:12px 14px;border-bottom:1px solid var(--at-border);font-weight:600;font-size:14px}
+  .drawer .dc{padding:14px;font-size:13px;color:var(--muted)}
+  .menu{border:1px solid var(--at-border);border-radius:8px;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:170px;overflow:hidden;font-size:14px}
+  .menu .mi{padding:9px 14px;cursor:pointer}
+  .menu .mi:hover{background:#f1f2f4}
+  .pagination{display:flex;gap:4px}
+  .pagination .p{min-width:32px;height:32px;border:1px solid var(--at-border);border-radius:6px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer}
+  .pagination .p.active{background:var(--at-blue);color:#fff;border-color:var(--at-blue)}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:8px 20px}
+  .empty .ic{font-size:28px;opacity:.5}
+  .section-msg{border:1px solid #b3d4ff;background:#deebff;border-radius:8px;padding:12px 14px;font-size:13px;max-width:320px}
+  .banner{background:#ffab00;color:#172b4d;padding:8px 14px;font-size:13px;border-radius:6px;font-weight:500}
+  .popover,.popup{border:1px solid var(--at-border);border-radius:8px;background:#fff;box-shadow:0 6px 16px rgba(0,0,0,.12);padding:12px 14px;font-size:13px;max-width:230px}
+  .avatar-stack{display:flex}
+  .avatar-stack .avatar{margin-left:-8px;border:2px solid #fff}
+  .avatar-stack .avatar:first-child{margin-left:0}
+  .range{width:200px}
+  .cal{border:1px solid var(--at-border);border-radius:8px;padding:10px;background:#fff;font-size:12px;width:200px}
+  .cal .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+  .cal .g span{padding:4px 0;border-radius:4px}
+  .cal .g span.sel{background:var(--at-blue);color:#fff}
+  .cal .g span.hd{color:var(--muted);font-weight:600}
+  .spotlight{background:#172b4d;color:#fff;border-radius:8px;padding:14px;max-width:250px;font-size:13px}
+  .spotlight h4{margin:0 0 6px}
+  .steps{display:flex;align-items:center;gap:0;font-size:12px}
+  .steps .s{display:flex;align-items:center;gap:6px}
+  .steps .dot{width:22px;height:22px;border-radius:50%;background:#dfe1e6;color:#42526e;display:inline-flex;align-items:center;justify-content:center;font-weight:600}
+  .steps .dot.done{background:var(--at-blue);color:#fff}
+  .steps .bar{width:34px;height:2px;background:#dfe1e6;margin:0 4px}
+  .list-el{font-size:14px;padding-left:20px;margin:0}
+  .list-el li{padding:2px 0}
+  details.det{border:1px solid var(--at-border);border-radius:8px;padding:8px 12px;font-size:14px;background:#fff;max-width:280px}
+  details.det summary{cursor:pointer;font-weight:500}
+  .comment{display:flex;gap:10px;font-size:13px;max-width:320px}
+  .comment .body-c{background:#f4f5f7;border-radius:8px;padding:8px 12px}
+  .comment .name{font-weight:600}
+  .search-el{display:flex;align-items:center;border:1px solid var(--at-border);border-radius:8px;padding:6px 10px;background:#fff;gap:6px}
+  .search-el input{border:none;outline:none;font:inherit;font-size:14px}
+  .skip-link{background:var(--ds-blue);color:#fff;padding:8px 14px;border-radius:6px;font-size:14px;text-decoration:none}
+  .nav-sys{display:flex;gap:16px;background:#12233b;padding:10px 16px;border-radius:8px;color:#fff;font-size:14px}
+  .nav-sys a{color:#cbd5e1;text-decoration:none}
+  .nav-sys a.active{color:#fff;font-weight:600}
+  .panel{width:170px;border:1px solid var(--at-border);border-radius:8px;background:#fafbfc;padding:10px;font-size:13px}
+  .panel .pi{padding:7px 10px;border-radius:6px;cursor:pointer}
+  .panel .pi.active{background:#e7f0ff;color:#0747a6;font-weight:600}
+  .page-header-el{border-bottom:1px solid var(--at-border);padding-bottom:10px}
+  .page-header-el h4{margin:0;font-size:18px}
+  .page-header-el .sub{color:var(--muted);font-size:13px}
+  .logo-el{font-weight:800;font-size:20px;color:var(--ds-blue);letter-spacing:-.5px}
+  .img-el{width:120px;height:80px;border-radius:8px;background:linear-gradient(135deg,#0c66e4,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px}
+  .dropdown{border:1px solid var(--at-border);border-radius:6px;padding:8px 12px;font-size:14px;background:#fff;display:inline-flex;gap:8px;align-items:center;cursor:pointer;min-width:180px;justify-content:space-between}
+  .tagg{display:inline-flex;gap:6px;flex-wrap:wrap}
+  select.native{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--at-border);border-radius:6px;background:#fff;min-width:180px}
+  textarea.ta{font:inherit;font-size:14px;padding:9px 12px;border:1px solid #6a6f73;border-radius:6px;min-width:220px;min-height:70px;resize:vertical}
+  footer.page{padding:24px 32px;color:var(--muted);font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>InPraxis — Component Visualiser</h1>
+  <p>60 components from the design-system inventory. Each card shows three panels: <b>Info</b> (usage + reference docs), <b>Reference demo</b> (an HTML/CSS recreation styled after Designsystemet/Atlassian), and <b>Live in InPraxis</b> (a real screenshot captured from mosoinpraxis.com, Admin view). ~30 components have a live capture; the rest live in deeper sub-flows not drilled into this pass.</p>
+</header>
+
+<div class="toolbar">
+  <input id="search" type="text" placeholder="Filter components…" oninput="filterCards()">
+  <span id="cats"></span>
+</div>
+
+<main id="main"></main>
+
+<footer class="page">
+  Legend: <span class="ref-badge ref-both">Both matching</span>
+  <span class="ref-badge ref-ds">Designsystemet</span>
+  <span class="ref-badge ref-at">Atlassian Design</span>
+  &nbsp;·&nbsp; Demos are hand-coded recreations, not the reference systems' production code.
+</footer>
+
+<script>
+// data: [category, name, variant(indent), inpraxisExample, reference, dsLink, atLink, demoKey]
+const REF = {both:'Both matching', ds:'Designsystemet', at:'Atlassian Design'};
+const DATA = [
+["Forms & input","Button","","Multiple places","both","https://designsystemet.no/en/components/docs/button/overview","https://atlassian.design/components/button/usage","button"],
+["Forms & input","Icon button","v","Admin › User table › Action button","at","","https://atlassian.design/components/button/icon-button/usage","iconbutton"],
+["Forms & input","Link button","v","User › Home › Evaluation table › View All","at","","https://atlassian.design/components/button/link-button/usage","linkbutton"],
+["Forms & input","Link icon button","v","User › Header › Message button","at","","https://atlassian.design/components/button/link-button/usage","linkiconbutton"],
+["Forms & input","Calendar","","Attendance","at","","https://atlassian.design/components/calendar/usage","calendar"],
+["Forms & input","Checkbox","","Admin › Settings › General tab","both","https://designsystemet.no/en/components/docs/checkbox/overview","https://atlassian.design/components/checkbox/usage","checkbox"],
+["Forms & input","Comment","","Evaluation / Document form","at","","https://atlassian.design/components/comment/usage","comment"],
+["Forms & input","Date picker","","Admin › Create Group › Group Information","both","https://designsystemet.no/en/components/docs/datepicker/overview","https://atlassian.design/components/datetime-picker/date-picker/usage","datepicker"],
+["Forms & input","Time picker","","Admin › Settings › Attendance tab","at","","https://atlassian.design/components/datetime-picker/date-picker/usage","timepicker"],
+["Forms & input","Dropdown","","Admin › Settings › Default language","both","https://designsystemet.no/en/components/docs/dropdownmenu/overview","https://atlassian.design/components/dropdown-menu/usage","dropdown"],
+["Forms & input","Form","","Admin › Create User page","at","","https://atlassian.design/components/form/usage","form"],
+["Forms & input","Input","","Admin › Create User page","ds","https://designsystemet.no/en/components/docs/textfield/overview","","input"],
+["Forms & input","Radio","","Admin › Settings › FS tab","both","https://designsystemet.no/en/components/docs/radio/overview","https://atlassian.design/components/radio/usage","radio"],
+["Forms & input","Range","","User › Nansen-Pilot › Kommunicera question","at","","https://atlassian.design/components/range/usage","range"],
+["Forms & input","Select","","Multiple places","both","https://designsystemet.no/en/components/docs/select/overview","https://atlassian.design/components/select/examples","select"],
+["Forms & input","Async creatable select","v","Admin › Group Details › Add Primary Supervisor","at","","https://atlassian.design/components/select/async-creatable-select/examples","select"],
+["Forms & input","Async select","v","Admin › Create Group › Year field","at","","https://atlassian.design/components/select/async-select/examples","select"],
+["Forms & input","Checkbox select","v","Admin › Group Details › Add Secondary Supervisor","at","","https://atlassian.design/components/select/checkbox-select/examples","checkboxselect"],
+["Forms & input","Radio select","v","Admin › Create Group › Year field","at","","https://atlassian.design/components/select/radio-select","select"],
+["Forms & input","Suggestion","","Admin › Settings › Default language","ds","https://designsystemet.no/en/components/docs/suggestion/overview","","suggestion"],
+["Forms & input","Switch","","Admin › Settings › Plan › Multimedia toggle","both","https://designsystemet.no/en/components/docs/switch/overview","https://atlassian.design/components/toggle/usage","switch"],
+["Forms & input","Textarea","","Evaluation form","both","https://designsystemet.no/en/components/docs/textarea/overview","https://atlassian.design/components/textarea/usage","textarea"],
+["Forms & input","Textfield","","Evaluation form","both","https://designsystemet.no/en/components/docs/textfield/overview","https://atlassian.design/components/textfield/examples","textfield"],
+["Images & icons","Avatar","","Header › Profile icon","both","https://designsystemet.no/en/components/docs/avatar/overview","https://atlassian.design/components/avatar/usage","avatar"],
+["Images & icons","Avatar stack","","Admin › Group Details › Secondary Supervisor","both","https://designsystemet.no/en/components/docs/avatar/overview","https://atlassian.design/components/avatar-group/usage","avatarstack"],
+["Images & icons","Icon","","Multiple places","at","","https://atlassian.design/components/icon/usage","icon"],
+["Images & icons","Image","","Admin › DigiVis page","at","","https://atlassian.design/components/image/usage","image"],
+["Images & icons","Logo","","Header","at","","https://atlassian.design/components/logo/usage","logo"],
+["Labels","Badge","","User › Header › Notification count","both","https://designsystemet.no/en/components/docs/badge/overview","https://atlassian.design/components/badge/usage","badge"],
+["Labels","Tag","","Admin › User table › Role column","both","https://designsystemet.no/en/components/docs/tag/overview","https://atlassian.design/components/tag/examples","tag"],
+["Labels","Tag group","","Admin › Settings › File types field","at","","https://atlassian.design/components/tag-group/usage","taggroup"],
+["Layout & structure","Page header","","Both Admin/User view","at","","https://atlassian.design/components/page-header/usage","pageheader"],
+["Layout & structure","Panel","","Left navigation sidebar","at","","https://atlassian.design/components/panel/usage","panel"],
+["Loading","Progress bar","","File Sharing › Upload file/folder","at","","https://atlassian.design/components/progress-bar/usage","progress"],
+["Loading","Spinner","","Home › Evaluation section","both","https://designsystemet.no/en/components/docs/spinner/overview","https://atlassian.design/components/spinner/usage","spinner"],
+["Messaging","Alert","","Multiple places","ds","https://designsystemet.no/en/components/docs/alert/overview","","alert"],
+["Messaging","Banner","","Suitability form","at","","https://atlassian.design/components/banner/usage","banner"],
+["Messaging","Dialog","","Multiple places","both","https://designsystemet.no/en/components/docs/modal/overview","https://atlassian.design/components/modal-dialog/usage","dialog"],
+["Messaging","Empty state","","Admin › User page › Invitation table","at","","https://atlassian.design/components/empty-state/usage","empty"],
+["Messaging","Popover","","Student Details › Attendance tab","ds","https://designsystemet.no/en/components/docs/popover/overview","","popover"],
+["Messaging","Section message","","Evaluation form","at","","https://atlassian.design/components/section-message/usage","sectionmsg"],
+["Messaging","Spotlight","","Tutorials","at","","https://atlassian.design/components/spotlight/usage","spotlight"],
+["Messaging","Validation message","","Multiple places","ds","https://designsystemet.no/en/components/docs/validationmessage/overview","","validation"],
+["Navigation","Breadcrumbs","","Group / Student Details page","both","https://designsystemet.no/en/components/docs/breadcrumbs/overview","https://atlassian.design/components/breadcrumbs/usage","breadcrumbs"],
+["Navigation","Link","","Multiple places","both","https://designsystemet.no/en/components/docs/link/overview","https://atlassian.design/components/link/usage","link"],
+["Navigation","Menu","","Admin › User table › Action menu","at","","https://atlassian.design/components/menu/usage","menu"],
+["Navigation","Navigation system","","Header, left sidebar","at","","https://atlassian.design/components/navigation-system/examples","navsys"],
+["Navigation","Pagination","","Admin › Evaluation page","both","https://designsystemet.no/en/components/docs/pagination/overview","https://atlassian.design/components/pagination/usage","pagination"],
+["Navigation","Skip link","","Attendance page","ds","https://designsystemet.no/en/components/docs/skiplink/overview","","skiplink"],
+["Navigation","Tabs","","Student Details › Submission tab","both","https://designsystemet.no/en/components/docs/tabs/overview","https://atlassian.design/components/tabs/usage","tabs"],
+["Others","Card","","Evaluation form","ds","https://designsystemet.no/en/components/docs/card/overview","","cardel"],
+["Others","Divider","","Admin › DigiVis page","ds","https://designsystemet.no/en/components/docs/divider/overview","","divider"],
+["Others","Field","","Multiple places","ds","https://designsystemet.no/en/components/docs/field/overview","","fieldel"],
+["Others","Search","","Multiple places","ds","https://designsystemet.no/en/components/docs/search/overview","","search"],
+["Overlays & layering","Drawer","","Evaluation form","at","","https://atlassian.design/components/drawer/usage","drawer"],
+["Overlays & layering","Popup","","Multiple places","at","","https://atlassian.design/components/popup/usage","popup"],
+["Overlays & layering","Tooltip","","Multiple places","both","https://designsystemet.no/en/components/docs/tooltip/overview","https://atlassian.design/components/tooltip/usage","tooltip"],
+["Status indicator","Progress indicator","","Create Group page","at","","https://atlassian.design/components/progress-indicator/usage","steps"],
+["Text & data display","Details","","Evaluation form","ds","https://designsystemet.no/en/components/docs/details/overview","","details"],
+["Text & data display","List","","Student › Account › Group list","ds","https://designsystemet.no/en/components/docs/list/overview","","listel"],
+["Text & data display","Table","","Admin › Users / Groups pages","both","https://designsystemet.no/en/components/docs/table/overview","https://atlassian.design/components/dynamic-table/usage","table"],
+];
+
+// Live screenshots captured from mosoinpraxis.com (Admin / MOSO.AS). Keyed by component name.
+// {img, loc} — img is file in ./assets, loc = where in that screenshot the component appears.
+const LIVE = {
+  "Button":{img:"users.png",loc:"Merge / Invite / New user action buttons (Users page toolbar)"},
+  "Icon button":{img:"users.png",loc:"Row action ⋮ icon buttons in the Users table"},
+  "Link button":{img:"users.png",loc:"‘Copy Link’ text buttons in the invitation table"},
+  "Link icon button":{img:"users.png",loc:"Header search / notification icon links"},
+  "Calendar":{img:"create-group-datepicker.png",loc:"Month grid inside the date-picker popover (July 2026)"},
+  "Checkbox":{img:"settings-general.png",loc:"‘Allow both supervisors…’, ‘Login as user’ setting checkboxes"},
+  "Date picker":{img:"create-group-datepicker.png",loc:"Start/End date fields with open calendar (Create Group)"},
+  "Time picker":{img:"settings-fs.png",loc:"‘Select time’ hour pickers on the FS reminder options"},
+  "Dropdown":{img:"settings-general.png",loc:"Organisation default-language select"},
+  "Form":{img:"create-group-datepicker.png",loc:"Create Group multi-field form"},
+  "Input":{img:"create-group-datepicker.png",loc:"Required text inputs (group title / code)"},
+  "Radio":{img:"settings-fs.png",loc:"Reminder-interval radio group (1h / 2h / 12h / 24h)"},
+  "Select":{img:"groups.png",loc:"Year / Term / Emne filter selects above the Groups table"},
+  "Async select":{img:"create-group-datepicker.png",loc:"Year field (async select) in Create Group"},
+  "Switch":{img:"settings-plan.png",loc:"Plan tab toggle switch (checked)"},
+  "Textarea":{img:"settings-plan.png",loc:"Rich-text content editor on the Plan tab"},
+  "Textfield":{img:"create-group-datepicker.png",loc:"Group title / code text fields"},
+  "Avatar":{img:"users.png",loc:"User avatars in the Users table rows"},
+  "Avatar stack":{img:"groups.png",loc:"Teachers column stacked avatars (‘+2’)"},
+  "Icon":{img:"users.png",loc:"Sidebar navigation icons + header icons"},
+  "Logo":{img:"users.png",loc:"App identity / avatar in the top header"},
+  "Badge":{img:"users.png",loc:"Count badge on the header notification icon"},
+  "Tag":{img:"users.png",loc:"Role column tags (Teacher / Admin / Student)"},
+  "Page header":{img:"groups.png",loc:"Filter + title toolbar at top of the Groups page"},
+  "Panel":{img:"users.png",loc:"Left navigation sidebar panel"},
+  "Alert":{img:"settings-general.png",loc:"Inline setting notices (approximate)"},
+  "Link":{img:"users.png",loc:"‘Copy Link’ / textual links in the tables"},
+  "Menu":{img:"users.png",loc:"Row ⋮ action menu in the Users table"},
+  "Navigation system":{img:"users.png",loc:"Left sidebar + top header navigation system"},
+  "Pagination":{img:"evaluations.png",loc:"Pagination with ellipsis (pages 1–41) below the table"},
+  "Tabs":{img:"settings-general.png",loc:"General / Plan / Attendance / FS tab bar"},
+  "Field":{img:"create-group-datepicker.png",loc:"Labeled form fields in Create Group"},
+  "Search":{img:"users.png",loc:"‘Search…’ input above the Users table"},
+  "Progress indicator":{img:"create-group-datepicker.png",loc:"Create Group wizard Previous / Next step navigation"},
+  "Table":{img:"users.png",loc:"Users data table (columns, rows, header)"},
+};
+
+function demo(key){
+  switch(key){
+    case "button": return `<button class="ds-btn primary">Primary</button><button class="ds-btn secondary">Secondary</button><button class="ds-btn tertiary">Tertiary</button>`;
+    case "iconbutton": return `<button class="icon-btn" title="Edit">✏️</button><button class="icon-btn" title="Delete">🗑️</button><button class="icon-btn" title="More">⋯</button>`;
+    case "linkbutton": return `<a class="link" href="#">View All →</a>`;
+    case "linkiconbutton": return `<a class="link" href="#" style="display:inline-flex;gap:6px;align-items:center">✉️ Messages</a>`;
+    case "calendar": return cal();
+    case "checkbox": return `<label class="checkbox"><input type="checkbox" checked> Send notifications</label><label class="checkbox"><input type="checkbox"> Email digest</label>`;
+    case "comment": return `<div class="comment"><span class="avatar">AK</span><div><div class="body-c"><span class="name">Anna K.</span><div>Looks good — approved for submission.</div></div><div style="font-size:12px;color:var(--muted);margin-top:4px"><a class="link">Reply</a> · 2h ago</div></div></div>`;
+    case "datepicker": return `<div class="field" style="max-width:220px"><label>Start date</label><input class="at-input" type="date" value="2026-07-01"></div>`;
+    case "timepicker": return `<div class="field" style="max-width:220px"><label>Attendance time</label><input class="at-input" type="time" value="09:00"></div>`;
+    case "dropdown": return `<div class="dropdown">Norwegian (Bokmål) <span>▾</span></div>`;
+    case "form": return `<div style="display:flex;flex-direction:column;gap:10px;max-width:240px"><div class="field"><label>First name</label><input class="at-input"></div><div class="field"><label>Email</label><input class="at-input" type="email"></div><button class="at-btn primary">Create user</button></div>`;
+    case "input": return `<input class="ds-input" placeholder="Enter value…">`;
+    case "radio": return `<label class="radio"><input type="radio" name="fs" checked> FS enabled</label><label class="radio"><input type="radio" name="fs"> FS disabled</label>`;
+    case "range": return `<input class="range" type="range" min="0" max="10" value="7">`;
+    case "select": return `<select class="native"><option>Choose supervisor…</option><option>Dr. Nansen</option><option>Prof. Berg</option></select>`;
+    case "checkboxselect": return `<div class="menu" style="max-width:200px"><div class="mi"><label class="checkbox"><input type="checkbox" checked> Dr. Nansen</label></div><div class="mi"><label class="checkbox"><input type="checkbox"> Prof. Berg</label></div><div class="mi"><label class="checkbox"><input type="checkbox"> Dr. Lind</label></div></div>`;
+    case "suggestion": return `<div style="max-width:220px"><input class="ds-input" value="Nor" style="min-width:200px"><div class="menu" style="margin-top:4px"><div class="mi">Norwegian (Bokmål)</div><div class="mi">Norwegian (Nynorsk)</div></div></div>`;
+    case "switch": return `<label class="checkbox" style="cursor:pointer"><span class="switch on" onclick="this.classList.toggle('on')"></span> Multimedia</label>`;
+    case "textarea": return `<textarea class="ta" placeholder="Write your evaluation…">The candidate demonstrated strong clinical reasoning.</textarea>`;
+    case "textfield": return `<div class="field" style="max-width:240px"><label>Full name</label><input class="ds-input" value="Ola Nordmann" style="min-width:200px"><span class="hint">As it appears on records</span></div>`;
+    case "avatar": return `<span class="avatar">ON</span><span class="avatar" style="background:#6554c0">MB</span>`;
+    case "avatarstack": return `<div class="avatar-stack"><span class="avatar">ON</span><span class="avatar" style="background:#6554c0">MB</span><span class="avatar" style="background:#00875a">KL</span><span class="avatar" style="background:#8993a4">+3</span></div>`;
+    case "icon": return `<span style="font-size:22px">🔍 ⚙️ 📅 ✉️ ⭐ 🗑️</span>`;
+    case "image": return `<div class="img-el">🏥</div>`;
+    case "logo": return `<span class="logo-el">InPraxis</span>`;
+    case "badge": return `<span style="position:relative;display:inline-block;font-size:22px">✉️<span class="badge-count" style="position:absolute;top:-6px;right:-12px">3</span></span>`;
+    case "tag": return `<span class="tag" style="background:#e7f0ff;color:#0747a6">Admin</span> <span class="tag" style="background:#e6f4ea;color:#1b5e20">Supervisor</span> <span class="tag">Student</span>`;
+    case "taggroup": return `<div class="tagg"><span class="tag">.pdf</span><span class="tag">.docx</span><span class="tag">.png</span><span class="tag">.jpg</span><span class="tag">+2</span></div>`;
+    case "pageheader": return `<div class="page-header-el"><div class="breadcrumbs"><a>Admin</a> / <a>Groups</a></div><h4>AssCE Nansen Pilot</h4><div class="sub">32 students · 4 supervisors</div></div>`;
+    case "panel": return `<div class="panel"><div class="pi active">Overview</div><div class="pi">Students</div><div class="pi">Attendance</div><div class="pi">Settings</div></div>`;
+    case "progress": return `<div><div class="progress"><i></i></div><div style="font-size:12px;color:var(--muted);margin-top:4px">Uploading… 62%</div></div>`;
+    case "spinner": return `<div class="spinner"></div>`;
+    case "alert": return `<div style="display:flex;flex-direction:column;gap:8px"><div class="alert info">ℹ️ New evaluation cycle is now open.</div><div class="alert success">✅ Changes saved successfully.</div><div class="alert danger">⛔ Submission failed — try again.</div></div>`;
+    case "banner": return `<div class="banner">⚠️ Your suitability form is incomplete.</div>`;
+    case "dialog": return `<div class="card-el" style="max-width:280px;box-shadow:0 8px 24px rgba(0,0,0,.15)"><h4 style="margin:0 0 8px">Delete group?</h4><p style="margin:0 0 12px;font-size:13px;color:var(--muted)">This action cannot be undone.</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="at-btn subtle">Cancel</button><button class="at-btn primary" style="background:var(--danger)">Delete</button></div></div>`;
+    case "empty": return `<div class="empty"><div class="ic">📭</div><div>No invitations yet</div><div style="margin-top:8px"><button class="at-btn primary">Invite user</button></div></div>`;
+    case "popover": return `<div class="popover"><strong>Attendance details</strong><div style="color:var(--muted);margin-top:4px">Present 24 · Absent 3 · Excused 1</div></div>`;
+    case "sectionmsg": return `<div class="section-msg"><strong>Before you submit</strong><div style="margin-top:4px">Ensure all required questions are answered.</div></div>`;
+    case "spotlight": return `<div class="spotlight"><h4>Welcome to Evaluations 👋</h4><div style="color:#c1c7d0">Start here to review pending student submissions.</div><div style="margin-top:10px;text-align:right"><button class="at-btn" style="background:#fff;color:#172b4d">Got it</button></div></div>`;
+    case "validation": return `<div class="field"><input class="ds-input" style="border-color:var(--danger)" value="ola@"><div class="validation">⛔ Enter a valid email address</div></div>`;
+    case "breadcrumbs": return `<div class="breadcrumbs"><a>Home</a> / <a>Groups</a> / <a>Nansen Pilot</a> / <span>Ola Nordmann</span></div>`;
+    case "link": return `<a class="link" href="#">Open evaluation</a> · <a class="link" href="#">Download report ↗</a>`;
+    case "menu": return `<div class="menu"><div class="mi">✏️ Edit user</div><div class="mi">🔁 Reset password</div><div class="mi" style="color:var(--danger)">🗑️ Remove</div></div>`;
+    case "navsys": return `<div class="nav-sys"><span class="logo-el" style="color:#fff;font-size:16px">InPraxis</span><a class="active">Home</a><a>Evaluations</a><a>Groups</a><a>Settings</a></div>`;
+    case "pagination": return `<div class="pagination"><span class="p">‹</span><span class="p active">1</span><span class="p">2</span><span class="p">3</span><span class="p">…</span><span class="p">9</span><span class="p">›</span></div>`;
+    case "skiplink": return `<a class="skip-link" href="#main">Skip to main content</a>`;
+    case "tabs": return `<div style="width:320px"><div class="tabs"><span class="t active">Submission</span><span class="t">Attendance</span><span class="t">Notes</span></div><div style="padding:12px 4px;font-size:13px;color:var(--muted)">Submission content…</div></div>`;
+    case "cardel": return `<div class="card-el"><h4 style="margin:0 0 6px">Evaluation #204</h4><p style="margin:0;font-size:13px;color:var(--muted)">Clinical placement — Spring 2026</p><div style="margin-top:10px"><span class="tag" style="background:#e6f4ea;color:#1b5e20">Completed</span></div></div>`;
+    case "divider": return `<div style="display:flex;flex-direction:column;gap:8px"><span style="font-size:13px">Section A</span><div class="divider"></div><span style="font-size:13px">Section B</span></div>`;
+    case "fieldel": return `<div class="field" style="max-width:240px"><label>Organisation</label><input class="ds-input" style="min-width:200px"><span class="hint">Optional — leave blank to inherit</span></div>`;
+    case "search": return `<div class="search-el">🔍 <input placeholder="Search students…"></div>`;
+    case "drawer": return `<div class="drawer"><div class="dh">Evaluation panel ✕</div><div class="dc">Slide-in content anchored to the right edge of the screen.</div></div>`;
+    case "popup": return `<div class="popup"><strong>Quick actions</strong><div style="margin-top:6px"><a class="link">Assign</a> · <a class="link">Export</a></div></div>`;
+    case "tooltip": return `<span style="position:relative"><button class="icon-btn">ℹ️</button></span> <span class="tooltip-el">More information</span>`;
+    case "steps": return `<div class="steps"><div class="s"><span class="dot done">1</span> Info</div><span class="bar"></span><div class="s"><span class="dot done">2</span> Students</div><span class="bar"></span><div class="s"><span class="dot">3</span> Review</div></div>`;
+    case "details": return `<details class="det"><summary>Evaluation criteria</summary><div style="margin-top:8px;color:var(--muted)">Detailed rubric shown when expanded.</div></details>`;
+    case "listel": return `<ul class="list-el"><li>AssCE Nansen Pilot</li><li>Clinical Placement 2026</li><li>Bachelor Nursing — Group B</li></ul>`;
+    case "table": return `<table class="tbl"><thead><tr><th>Name</th><th>Role</th><th>Status</th></tr></thead><tbody><tr><td>Ola Nordmann</td><td><span class="tag">Student</span></td><td>Active</td></tr><tr><td>Anna Berg</td><td><span class="tag" style="background:#e7f0ff;color:#0747a6">Admin</span></td><td>Active</td></tr></tbody></table>`;
+    default: return `<span style="color:var(--muted);font-size:13px">— preview —</span>`;
+  }
+}
+function cal(){
+  let cells="<span class='hd'>M</span><span class='hd'>T</span><span class='hd'>W</span><span class='hd'>T</span><span class='hd'>F</span><span class='hd'>S</span><span class='hd'>S</span>";
+  for(let d=1;d<=28;d++){cells+=`<span class='${d===12?'sel':''}'>${d}</span>`;}
+  return `<div class="cal"><div style="font-weight:600;margin-bottom:6px;text-align:center">July 2026</div><div class="g">${cells}</div></div>`;
+}
+
+// render grouped by category
+const main=document.getElementById('main');
+const cats=[...new Set(DATA.map(d=>d[0]))];
+const catBar=document.getElementById('cats');
+catBar.innerHTML=`<span class="cat active" data-c="all" onclick="setCat('all',this)">All</span>`+
+  cats.map(c=>`<span class="cat" data-c="${c}" onclick="setCat('${c}',this)">${c}</span>`).join('');
+
+cats.forEach(cat=>{
+  const h=document.createElement('h2');h.className='cat-title';h.dataset.cat=cat;h.textContent=cat;main.appendChild(h);
+  DATA.filter(d=>d[0]===cat).forEach(d=>{
+    const [category,name,variant,ex,ref,ds,at,key]=d;
+    const card=document.createElement('div');card.className='card';
+    card.dataset.cat=category;card.dataset.name=name.toLowerCase();
+    const links=[];
+    if(ds)links.push(`<a href="${ds}" target="_blank" rel="noopener">Designsystemet ↗</a>`);
+    if(at)links.push(`<a href="${at}" target="_blank" rel="noopener">Atlassian ↗</a>`);
+    const live=LIVE[name];
+    const liveCol = live
+      ? `<div class="cap"><span class="live-badge live-yes">● Live capture</span></div>
+         <a href="assets/${live.img}" target="_blank" rel="noopener"><img src="assets/${live.img}" alt="${name} in InPraxis" loading="lazy"></a>
+         <div class="loc">📍 ${live.loc}</div>`
+      : `<div class="cap"><span class="live-badge live-no">○ Not captured</span></div>
+         <div class="none">No live screenshot captured for this component in this pass<br><small>(appears only in a deeper sub-flow)</small></div>`;
+    card.innerHTML=`
+      <div class="head">
+        <h3>${variant==='v'?'<span class="variant">› </span>':''}${name}</h3>
+        <span class="ref-badge ref-${ref}">${REF[ref]}</span>
+      </div>
+      <div class="body">
+        <div class="info">
+          <div class="row"><span class="k">Category</span><span class="v">${category}</span></div>
+          <div class="row"><span class="k">InPraxis usage</span><span class="v">${ex}</span></div>
+          <div class="row"><span class="k">Reference</span><span class="v">${REF[ref]}</span></div>
+          <div class="row"><span class="k">Docs</span><span class="v">${links.join(' &nbsp;·&nbsp; ')||'—'}</span></div>
+        </div>
+        <div class="demo">${demo(key)}</div>
+        <div class="live">${liveCol}</div>
+      </div>`;
+    main.appendChild(card);
+  });
+});
+
+function setCat(c,el){
+  document.querySelectorAll('.toolbar .cat').forEach(x=>x.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.card').forEach(card=>{card.style.display=(c==='all'||card.dataset.cat===c)?'':'none';});
+  document.querySelectorAll('.cat-title').forEach(h=>{h.style.display=(c==='all'||h.dataset.cat===c)?'':'none';});
+  document.getElementById('search').value='';
+}
+function filterCards(){
+  const q=document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('.card').forEach(card=>{card.style.display=card.dataset.name.includes(q)?'':'none';});
+  document.querySelectorAll('.cat-title').forEach(h=>{
+    const any=[...document.querySelectorAll(`.card[data-cat="${h.dataset.cat}"]`)].some(c=>c.style.display!=='none');
+    h.style.display=any?'':'none';
+  });
+}
+</script>
+</body>
+</html>
